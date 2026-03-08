@@ -3,26 +3,26 @@ import type { Agent, UploadedDocument } from "@/types/warroom";
 import { FileText, Loader2, CheckCircle, AlertCircle, Upload } from "lucide-react";
 
 const roleInitials: Record<string, string> = {
-  chairperson: "CH",
-  analyst: "AN",
-  advocate: "AD",
-  critic: "CR",
+  chairperson: "M",
+  analyst: "D",
+  advocate: "W",
+  critic: "L",
   secretary: "SC",
 };
 
 const roleLabel: Record<string, string> = {
-  chairperson: "Chairperson",
-  analyst: "Analyst",
-  advocate: "Advocate",
-  critic: "Critic",
+  chairperson: "DM / Dungeon Master",
+  analyst: "Stats & Strategy",
+  advocate: "The Artist",
+  critic: "Tactical Realist",
   secretary: "Secretary",
 };
 
 const roleColor: Record<string, string> = {
   chairperson: "bg-primary",
   analyst: "bg-success",
-  advocate: "bg-warning",
-  critic: "bg-destructive",
+  advocate: "bg-purple-500",
+  critic: "bg-warning",
   secretary: "bg-muted-foreground",
 };
 
@@ -32,6 +32,14 @@ const statusIcons: Record<string, React.ReactNode> = {
   analyzed: <CheckCircle className="w-3.5 h-3.5 text-success" />,
   error: <AlertCircle className="w-3.5 h-3.5 text-destructive" />,
 };
+
+// Fixed positions: top, left, right, bottom for the D&D table layout
+const FIXED_POSITIONS = [
+  { left: "50%", top: "18%" },   // Mike - top
+  { left: "18%", top: "50%" },   // Dustin - left
+  { left: "82%", top: "50%" },   // Lucas - right
+  { left: "50%", top: "82%" },   // Will - bottom
+];
 
 interface WarTableProps {
   agents: Agent[];
@@ -44,21 +52,10 @@ interface WarTableProps {
 export function WarTable({ agents, documents, onUpload, sessionStatus, bgImage }: WarTableProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const agentPositions = agents.map((_, i) => {
-    const angleStep = (Math.PI * 2) / agents.length;
-    const a = angleStep * i - Math.PI / 2;
-    const radiusPercent = 32;
-    return {
-      left: `${50 + radiusPercent * Math.cos(a)}%`,
-      top: `${50 + radiusPercent * Math.sin(a)}%`,
-    };
-  });
-
   return (
     <div className="flex-1 flex flex-col min-h-0 relative">
       {/* War table area */}
       <div className="flex-1 relative overflow-hidden bg-background">
-        {/* Optional background image from backend */}
         {bgImage && (
           <div
             className="absolute inset-0 bg-cover bg-center opacity-10 pointer-events-none"
@@ -71,17 +68,22 @@ export function WarTable({ agents, documents, onUpload, sessionStatus, bgImage }
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="absolute rounded-full border border-border/40"
+              className="absolute rounded-full border border-border/30"
               style={{ width: `${i * 22}%`, height: `${i * 22}%` }}
             />
           ))}
         </div>
 
-        {/* Center logo */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
-          <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center">
-            <span className="text-xl font-semibold text-muted-foreground/40">Q</span>
+        {/* Center — Quorum / User avatar */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center shadow-lg">
+              <span className="text-xl font-bold text-foreground">Q</span>
+            </div>
+            {/* Subtle glow */}
+            <div className="absolute inset-0 rounded-2xl bg-primary/10 animate-pulse pointer-events-none" />
           </div>
+          <p className="text-[10px] text-muted-foreground text-center mt-1.5">You</p>
         </div>
 
         {/* Empty state */}
@@ -94,45 +96,49 @@ export function WarTable({ agents, documents, onUpload, sessionStatus, bgImage }
         {/* Agents */}
         {agents.map((agent, i) => {
           const isSpeaking = agent.speakingState === "speaking";
+          const isThinking = agent.speakingState === "thinking";
           const color = roleColor[agent.role] || "bg-muted-foreground";
+          const pos = FIXED_POSITIONS[i] || { left: "50%", top: "50%" };
 
           return (
             <div
               key={agent.id}
               className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 z-10 transition-all duration-500"
-              style={{ left: agentPositions[i].left, top: agentPositions[i].top }}
+              style={{ left: pos.left, top: pos.top }}
             >
               <div className="relative">
-                {/* Avatar or initials */}
-                {agent.avatar ? (
-                  <img
-                    src={agent.avatar}
-                    alt={agent.name}
-                    className={`w-14 h-14 rounded-2xl object-cover transition-all duration-300 shadow-sm ${
-                      isSpeaking ? "shadow-lg scale-105 ring-2 ring-primary/40" : "border border-border"
-                    }`}
-                  />
-                ) : (
-                  <div
-                    className={`w-14 h-14 rounded-2xl flex items-center justify-center text-sm font-semibold transition-all duration-300 shadow-sm ${
-                      isSpeaking
-                        ? `${color} text-primary-foreground shadow-lg scale-105`
+                <div
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-sm ${
+                    isThinking
+                      ? "bg-muted text-muted-foreground opacity-50"
+                      : isSpeaking
+                        ? `${color} text-white shadow-lg scale-105`
                         : "bg-card text-foreground border border-border"
-                    }`}
-                  >
-                    {roleInitials[agent.role] || "??"}
-                  </div>
+                  }`}
+                >
+                  {roleInitials[agent.role] || "??"}
+                </div>
+                {isSpeaking && (
+                  <div className={`absolute inset-0 rounded-2xl border-2 ${
+                    agent.role === "chairperson" ? "border-primary/40" :
+                    agent.role === "critic" ? "border-warning/40" :
+                    agent.role === "advocate" ? "border-purple-400/40" :
+                    "border-success/40"
+                  } animate-pulse`} />
                 )}
                 {isSpeaking && (
-                  <div className="absolute inset-0 rounded-2xl border-2 border-primary/30 animate-pulse-ring" />
+                  <span className="absolute -top-1 -right-1 text-xs">🎤</span>
                 )}
-                {isSpeaking && (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-background" />
+                {isThinking && (
+                  <Loader2 className="absolute -bottom-1 -right-1 w-4 h-4 animate-spin text-primary" />
+                )}
+                {agent.isHandRaised && (
+                  <span className="absolute -top-1 -right-1 text-sm">✋</span>
                 )}
               </div>
 
               <div className="text-center">
-                <p className="text-xs font-medium text-foreground">{agent.name}</p>
+                <p className="text-xs font-semibold text-foreground">{agent.name}</p>
                 <p className="text-[10px] text-muted-foreground">{roleLabel[agent.role]}</p>
               </div>
 
@@ -141,7 +147,7 @@ export function WarTable({ agents, documents, onUpload, sessionStatus, bgImage }
                   {[0, 1, 2, 3].map((j) => (
                     <div
                       key={j}
-                      className="w-0.5 bg-primary rounded-full"
+                      className={`w-0.5 rounded-full ${color}`}
                       style={{
                         height: `${4 + Math.random() * 8}px`,
                         animation: `gentle-pulse ${0.5 + j * 0.15}s ease-in-out infinite alternate`,
