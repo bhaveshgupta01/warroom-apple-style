@@ -1,5 +1,11 @@
 # Welcome to your Lovable project
 
+## Team members
+Anzhelika Siui,
+Bhavesh Gupta,
+Pranjal Mishra,
+Aruzhan Koshkarova
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
